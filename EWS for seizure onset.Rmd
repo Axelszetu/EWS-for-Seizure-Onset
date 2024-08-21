@@ -1,0 +1,136 @@
+---
+title: "EWS for Sizure Onset"
+output: html_notebook
+---
+```{r}
+library(ggplot2)
+library(reshape2)
+```
+
+
+Initially, we will try to develop a method using the records from a single patient as an example.
+We will be considering CHB24.
+We will start by computing Variance and autocorrelation withing moving windows.
+Since the temporal resolution is quite high, we use disjoint intervals; otherwise the computation might be too heavy.
+The lowest frequency among commonly observed oscillations are the Delta waves with a frequency of (1-4)Hz.
+As such, an interval length of 1 second should be long enough not to be dominated by the phase of a low-frequency wave.
+The data is sampled at a rate of 256 samples per second.
+
+```{r}
+library(edf)
+data <- read.edf("./EEG data/chb01/chb01_03_edited.edf")
+#View(data)
+```
+In the following we define a function to compute running autocorrelation
+```{r}
+compute_running_autocorrelation <- function(signal, n_samples = 256){
+  length_out <- length(signal)/n_samples
+  rho <- numeric(length = length_out)
+  #browser()
+  for (i in (1:length_out)){
+    rho[i] <- acf(signal[((i-1)*n_samples+1):(i*n_samples)], lag.max = 1, plot = FALSE)$acf[2]
+  }
+  rho
+}
+```
+We test the above function
+```{r}
+test_data <- data$signal$FP1_F7$data
+test_rho <- compute_running_autocorrelation(signal = test_data, n_samples = 256)
+acf_object <- acf(test_data[1:256], lag.max = 1, plot = FALSE)$acf
+```
+In the following we define a function to compute running variance
+```{r}
+compute_running_variance <- function(signal, n_samples = 256){
+  length_out <- length(signal)/n_samples
+  var <- numeric(length = length_out)
+  for (i in (1:length_out)){
+    var[i] <- var(signal[((i-1)*n_samples+1):(i*n_samples)])
+  }
+  var
+}
+```
+We test the above function
+```{r}
+test_var <- compute_running_variance(signal = test_data, n_samples = 256)
+```
+
+We now make a function to take list of EDF format and compute the running EWS on each signal and save them in a data frame.
+```{r}
+make_EWS <- function(data, n_samples = 256, var = TRUE, rho = TRUE){
+  length_out <- length(data$signal$FP1_F7$t)/n_samples
+  out <- list()
+  if(rho == TRUE){
+    rho_df <- data.frame(
+      t = (1:length_out),
+      FP1_F7 = compute_running_autocorrelation(signal = data$signal$FP1_F7$data),
+      F7_T7  = compute_running_autocorrelation(signal = data$signal$F7_T7$data),
+      T7_P7 = compute_running_autocorrelation(signal = data$signal$T7_P7$data),
+      P7_O1 = compute_running_autocorrelation(signal = data$signal$P7_O1$data),
+      FP1_F3 = compute_running_autocorrelation(signal = data$signal$FP1_F3$data),
+      F3_C3 = compute_running_autocorrelation(signal = data$signal$F3_C3$data),
+      C3_P3 = compute_running_autocorrelation(signal = data$signal$C3_P3$data),
+      P3_O1 = compute_running_autocorrelation(signal = data$signal$P3_O1$data),
+      FP2_F4 = compute_running_autocorrelation(signal = data$signal$FP2_F4$data),
+      F4_C4 = compute_running_autocorrelation(signal = data$signal$F4_C4$data),
+      C4_P4 = compute_running_autocorrelation(signal = data$signal$C4_P4$data),
+      P4_O2 = compute_running_autocorrelation(signal = data$signal$P4_O2$data),
+      FP2_F8 = compute_running_autocorrelation(signal = data$signal$FP2_F8$data),
+      F8_T8 = compute_running_autocorrelation(signal = data$signal$F8_T8$data),
+      P8_O2 = compute_running_autocorrelation(signal = data$signal$P8_O2$data),
+      FZ_CZ = compute_running_autocorrelation(signal = data$signal$FZ_CZ$data),
+      CZ_PZ = compute_running_autocorrelation(signal = data$signal$CZ_PZ$data),
+      P7_T7 = compute_running_autocorrelation(signal = data$signal$P7_T7$data),
+      T7_FT9 = compute_running_autocorrelation(signal = data$signal$T7_FT9$data),
+      FT9_FT10 = compute_running_autocorrelation(signal = data$signal$FT9_FT10$data),
+      FT10_T8 = compute_running_autocorrelation(signal = data$signal$FT10_T8$data),
+      T8_P8 = compute_running_autocorrelation(signal = data$signal$T8_P8$data)
+    )
+    out$rho <- rho_df
+  }
+  if(var == TRUE){
+    var_df <- data.frame(
+      t = (1:length_out),
+      FP1_F7 = compute_running_variance(signal = data$signal$FP1_F7$data),
+      F7_T7  = compute_running_variance(signal = data$signal$F7_T7$data),
+      T7_P7 = compute_running_variance(signal = data$signal$T7_P7$data),
+      P7_O1 = compute_running_variance(signal = data$signal$P7_O1$data),
+      FP1_F3 = compute_running_variance(signal = data$signal$FP1_F3$data),
+      F3_C3 = compute_running_variance(signal = data$signal$F3_C3$data),
+      C3_P3 = compute_running_variance(signal = data$signal$C3_P3$data),
+      P3_O1 = compute_running_variance(signal = data$signal$P3_O1$data),
+      FP2_F4 = compute_running_variance(signal = data$signal$FP2_F4$data),
+      F4_C4 = compute_running_variance(signal = data$signal$F4_C4$data),
+      C4_P4 = compute_running_variance(signal = data$signal$C4_P4$data),
+      P4_O2 = compute_running_variance(signal = data$signal$P4_O2$data),
+      FP2_F8 = compute_running_variance(signal = data$signal$FP2_F8$data),
+      F8_T8 = compute_running_variance(signal = data$signal$F8_T8$data),
+      P8_O2 = compute_running_variance(signal = data$signal$P8_O2$data),
+      FZ_CZ = compute_running_variance(signal = data$signal$FZ_CZ$data),
+      CZ_PZ = compute_running_variance(signal = data$signal$CZ_PZ$data),
+      P7_T7 = compute_running_variance(signal = data$signal$P7_T7$data),
+      T7_FT9 = compute_running_variance(signal = data$signal$T7_FT9$data),
+      FT9_FT10 = compute_running_variance(signal = data$signal$FT9_FT10$data),
+      FT10_T8 = compute_running_variance(signal = data$signal$FT10_T8$data),
+      T8_P8 = compute_running_variance(signal = data$signal$T8_P8$data)
+    )
+    out$var <- var_df
+  }
+  out
+}
+```
+Okay, let's test!
+```{r}
+EWS_test <- make_EWS(data = data)
+```
+
+Let's make a plot: We'll need it anyways
+```{r}
+plot_data_var <- melt(EWS_test$var, id.vars = "t")
+ggplot(data = plot_data_var, mapping = aes(x = t, y = value, colour = variable)) + geom_line()
+```
+```{r}
+plot_data_rho <- melt(EWS_test$rho, id.vars = "t")
+ggplot(data = plot_data_rho, mapping = aes(x = t, y = value, colour = variable)) + geom_line()
+```
+
