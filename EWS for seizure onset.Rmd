@@ -2,9 +2,11 @@
 title: "EWS for Sizure Onset"
 output: html_notebook
 ---
-```{r}
+```{r, warning=FALSE}
 library(ggplot2)
 library(reshape2)
+library(lubridate)
+library(dplyr)
 ```
 
 
@@ -56,63 +58,64 @@ test_var <- compute_running_variance(signal = test_data, n_samples = 256)
 ```
 
 We now make a function to take list of EDF format and compute the running EWS on each signal and save them in a data frame.
-```{r}
+The following is an outdated version of the function. The updated will be in the chunk immediately below.
+```{r, eval = FALSE}
 make_EWS <- function(data, n_samples = 256, var = TRUE, rho = TRUE){
   length_out <- length(data$signal$FP1_F7$t)/n_samples
   out <- list()
   if(rho == TRUE){
     rho_df <- data.frame(
       t = (1:length_out),
-      FP1_F7 = compute_running_autocorrelation(signal = data$signal$FP1_F7$data),
-      F7_T7  = compute_running_autocorrelation(signal = data$signal$F7_T7$data),
-      T7_P7 = compute_running_autocorrelation(signal = data$signal$T7_P7$data),
-      P7_O1 = compute_running_autocorrelation(signal = data$signal$P7_O1$data),
-      FP1_F3 = compute_running_autocorrelation(signal = data$signal$FP1_F3$data),
-      F3_C3 = compute_running_autocorrelation(signal = data$signal$F3_C3$data),
-      C3_P3 = compute_running_autocorrelation(signal = data$signal$C3_P3$data),
-      P3_O1 = compute_running_autocorrelation(signal = data$signal$P3_O1$data),
-      FP2_F4 = compute_running_autocorrelation(signal = data$signal$FP2_F4$data),
-      F4_C4 = compute_running_autocorrelation(signal = data$signal$F4_C4$data),
-      C4_P4 = compute_running_autocorrelation(signal = data$signal$C4_P4$data),
-      P4_O2 = compute_running_autocorrelation(signal = data$signal$P4_O2$data),
-      FP2_F8 = compute_running_autocorrelation(signal = data$signal$FP2_F8$data),
-      F8_T8 = compute_running_autocorrelation(signal = data$signal$F8_T8$data),
-      P8_O2 = compute_running_autocorrelation(signal = data$signal$P8_O2$data),
-      FZ_CZ = compute_running_autocorrelation(signal = data$signal$FZ_CZ$data),
-      CZ_PZ = compute_running_autocorrelation(signal = data$signal$CZ_PZ$data),
-      P7_T7 = compute_running_autocorrelation(signal = data$signal$P7_T7$data),
-      T7_FT9 = compute_running_autocorrelation(signal = data$signal$T7_FT9$data),
-      FT9_FT10 = compute_running_autocorrelation(signal = data$signal$FT9_FT10$data),
-      FT10_T8 = compute_running_autocorrelation(signal = data$signal$FT10_T8$data),
-      T8_P8 = compute_running_autocorrelation(signal = data$signal$T8_P8$data)
+      FP1_F7_rho = compute_running_autocorrelation(signal = data$signal$FP1_F7$data),
+      F7_T7_rho  = compute_running_autocorrelation(signal = data$signal$F7_T7$data),
+      T7_P7_rho = compute_running_autocorrelation(signal = data$signal$T7_P7$data),
+      P7_O1_rho = compute_running_autocorrelation(signal = data$signal$P7_O1$data),
+      FP1_F3_rho = compute_running_autocorrelation(signal = data$signal$FP1_F3$data),
+      F3_C3_rho = compute_running_autocorrelation(signal = data$signal$F3_C3$data),
+      C3_P3_rho = compute_running_autocorrelation(signal = data$signal$C3_P3$data),
+      P3_O1_rho = compute_running_autocorrelation(signal = data$signal$P3_O1$data),
+      FP2_F4_rho = compute_running_autocorrelation(signal = data$signal$FP2_F4$data),
+      F4_C4_rho = compute_running_autocorrelation(signal = data$signal$F4_C4$data),
+      C4_P4_rho = compute_running_autocorrelation(signal = data$signal$C4_P4$data),
+      P4_O2_rho = compute_running_autocorrelation(signal = data$signal$P4_O2$data),
+      FP2_F8_rho = compute_running_autocorrelation(signal = data$signal$FP2_F8$data),
+      F8_T8_rho = compute_running_autocorrelation(signal = data$signal$F8_T8$data),
+      P8_O2_rho = compute_running_autocorrelation(signal = data$signal$P8_O2$data),
+      FZ_CZ_rho = compute_running_autocorrelation(signal = data$signal$FZ_CZ$data),
+      CZ_PZ_rho = compute_running_autocorrelation(signal = data$signal$CZ_PZ$data),
+      P7_T7_rho = compute_running_autocorrelation(signal = data$signal$P7_T7$data),
+      T7_FT9_rho = compute_running_autocorrelation(signal = data$signal$T7_FT9$data),
+      FT9_FT10_rho = compute_running_autocorrelation(signal = data$signal$FT9_FT10$data),
+      FT10_T8_rho = compute_running_autocorrelation(signal = data$signal$FT10_T8$data),
+      T8_P8_rho = compute_running_autocorrelation(signal = data$signal$T8_P8$data)
     )
     out$rho <- rho_df
   }
   if(var == TRUE){
     var_df <- data.frame(
       t = (1:length_out),
-      FP1_F7 = compute_running_variance(signal = data$signal$FP1_F7$data),
-      F7_T7  = compute_running_variance(signal = data$signal$F7_T7$data),
-      T7_P7 = compute_running_variance(signal = data$signal$T7_P7$data),
-      P7_O1 = compute_running_variance(signal = data$signal$P7_O1$data),
-      FP1_F3 = compute_running_variance(signal = data$signal$FP1_F3$data),
-      F3_C3 = compute_running_variance(signal = data$signal$F3_C3$data),
-      C3_P3 = compute_running_variance(signal = data$signal$C3_P3$data),
-      P3_O1 = compute_running_variance(signal = data$signal$P3_O1$data),
-      FP2_F4 = compute_running_variance(signal = data$signal$FP2_F4$data),
-      F4_C4 = compute_running_variance(signal = data$signal$F4_C4$data),
-      C4_P4 = compute_running_variance(signal = data$signal$C4_P4$data),
-      P4_O2 = compute_running_variance(signal = data$signal$P4_O2$data),
-      FP2_F8 = compute_running_variance(signal = data$signal$FP2_F8$data),
-      F8_T8 = compute_running_variance(signal = data$signal$F8_T8$data),
-      P8_O2 = compute_running_variance(signal = data$signal$P8_O2$data),
-      FZ_CZ = compute_running_variance(signal = data$signal$FZ_CZ$data),
-      CZ_PZ = compute_running_variance(signal = data$signal$CZ_PZ$data),
-      P7_T7 = compute_running_variance(signal = data$signal$P7_T7$data),
-      T7_FT9 = compute_running_variance(signal = data$signal$T7_FT9$data),
-      FT9_FT10 = compute_running_variance(signal = data$signal$FT9_FT10$data),
-      FT10_T8 = compute_running_variance(signal = data$signal$FT10_T8$data),
-      T8_P8 = compute_running_variance(signal = data$signal$T8_P8$data)
+      FP1_F7_var = compute_running_variance(signal = data$signal$FP1_F7$data),
+      F7_T7_var  = compute_running_variance(signal = data$signal$F7_T7$data),
+      T7_P7_var = compute_running_variance(signal = data$signal$T7_P7$data),
+      P7_O1_var = compute_running_variance(signal = data$signal$P7_O1$data),
+      FP1_F3_var = compute_running_variance(signal = data$signal$FP1_F3$data),
+      F3_C3_var = compute_running_variance(signal = data$signal$F3_C3$data),
+      C3_P3_var = compute_running_variance(signal = data$signal$C3_P3$data),
+      P3_O1_var = compute_running_variance(signal = data$signal$P3_O1$data),
+      FP2_F4_var = compute_running_variance(signal = data$signal$FP2_F4$data),
+      F4_C4_var = compute_running_variance(signal = data$signal$F4_C4$data),
+      C4_P4_var = compute_running_variance(signal = data$signal$C4_P4$data),
+      P4_O2_var = compute_running_variance(signal = data$signal$P4_O2$data),
+      FP2_F8_var = compute_running_variance(signal = data$signal$FP2_F8$data),
+      F8_T8_var = compute_running_variance(signal = data$signal$F8_T8$data),
+      P8_O2_var = compute_running_variance(signal = data$signal$P8_O2$data),
+      FZ_CZ_var = compute_running_variance(signal = data$signal$FZ_CZ$data),
+      CZ_PZ_var = compute_running_variance(signal = data$signal$CZ_PZ$data),
+      P7_T7_var = compute_running_variance(signal = data$signal$P7_T7$data),
+      T7_FT9_var = compute_running_variance(signal = data$signal$T7_FT9$data),
+      FT9_FT10_var = compute_running_variance(signal = data$signal$FT9_FT10$data),
+      FT10_T8_var = compute_running_variance(signal = data$signal$FT10_T8$data),
+      T8_P8_var = compute_running_variance(signal = data$signal$T8_P8$data)
     )
     out$var <- var_df
   }
@@ -120,12 +123,12 @@ make_EWS <- function(data, n_samples = 256, var = TRUE, rho = TRUE){
 }
 ```
 Okay, let's test!
-```{r}
+```{r, eval = FALSE} 
 EWS_test <- make_EWS(data = data)
 ```
 
 Let's make a plot: We'll need it anyways
-```{r}
+```{r, eval = FALSE}
 plot_data_var <- melt(EWS_test$var, id.vars = "t")
 ggplot(data = plot_data_var, mapping = aes(x = t, y = value, colour = variable)) + geom_line()
 ```
@@ -133,4 +136,280 @@ ggplot(data = plot_data_var, mapping = aes(x = t, y = value, colour = variable))
 plot_data_rho <- melt(EWS_test$rho, id.vars = "t")
 ggplot(data = plot_data_rho, mapping = aes(x = t, y = value, colour = variable)) + geom_line()
 ```
+Below, we define the updated make_EWS function:
+```{r}
+make_EWS <- function(data, n_samples = 256, var = TRUE, rho = TRUE){
+  length_out <- length(data$signal$FP1_F7$t)/n_samples
+  if(rho == TRUE){
+    rho_df <- data.frame(
+      t = (1:length_out)*(n_samples/256),
+      FP1_F7_rho = compute_running_autocorrelation(signal = data$signal$FP1_F7$data, n_samples = n_samples),
+      F7_T7_rho  = compute_running_autocorrelation(signal = data$signal$F7_T7$data, n_samples = n_samples),
+      T7_P7_rho = compute_running_autocorrelation(signal = data$signal$T7_P7$data, n_samples = n_samples),
+      P7_O1_rho = compute_running_autocorrelation(signal = data$signal$P7_O1$data, n_samples = n_samples),
+      FP1_F3_rho = compute_running_autocorrelation(signal = data$signal$FP1_F3$data, n_samples = n_samples),
+      F3_C3_rho = compute_running_autocorrelation(signal = data$signal$F3_C3$data, n_samples = n_samples),
+      C3_P3_rho = compute_running_autocorrelation(signal = data$signal$C3_P3$data, n_samples = n_samples),
+      P3_O1_rho = compute_running_autocorrelation(signal = data$signal$P3_O1$data, n_samples = n_samples),
+      FP2_F4_rho = compute_running_autocorrelation(signal = data$signal$FP2_F4$data, n_samples = n_samples),
+      F4_C4_rho = compute_running_autocorrelation(signal = data$signal$F4_C4$data, n_samples = n_samples),
+      C4_P4_rho = compute_running_autocorrelation(signal = data$signal$C4_P4$data, n_samples = n_samples),
+      P4_O2_rho = compute_running_autocorrelation(signal = data$signal$P4_O2$data, n_samples = n_samples),
+      FP2_F8_rho = compute_running_autocorrelation(signal = data$signal$FP2_F8$data, n_samples = n_samples),
+      F8_T8_rho = compute_running_autocorrelation(signal = data$signal$F8_T8$data, n_samples = n_samples),
+      P8_O2_rho = compute_running_autocorrelation(signal = data$signal$P8_O2$data, n_samples = n_samples),
+      FZ_CZ_rho = compute_running_autocorrelation(signal = data$signal$FZ_CZ$data, n_samples = n_samples),
+      CZ_PZ_rho = compute_running_autocorrelation(signal = data$signal$CZ_PZ$data, n_samples = n_samples),
+      P7_T7_rho = compute_running_autocorrelation(signal = data$signal$P7_T7$data, n_samples = n_samples),
+      T7_FT9_rho = compute_running_autocorrelation(signal = data$signal$T7_FT9$data, n_samples = n_samples),
+      FT9_FT10_rho = compute_running_autocorrelation(signal = data$signal$FT9_FT10$data, n_samples = n_samples),
+      FT10_T8_rho = compute_running_autocorrelation(signal = data$signal$FT10_T8$data, n_samples = n_samples),
+      T8_P8_rho = compute_running_autocorrelation(signal = data$signal$T8_P8$data, n_samples = n_samples)
+    )
+  }
+  if(var == TRUE){
+    var_df <- data.frame(
+      t = (1:length_out)*(n_samples/256),
+      FP1_F7_var = compute_running_variance(signal = data$signal$FP1_F7$data, n_samples = n_samples),
+      F7_T7_var  = compute_running_variance(signal = data$signal$F7_T7$data, n_samples = n_samples),
+      T7_P7_var = compute_running_variance(signal = data$signal$T7_P7$data, n_samples = n_samples),
+      P7_O1_var = compute_running_variance(signal = data$signal$P7_O1$data, n_samples = n_samples),
+      FP1_F3_var = compute_running_variance(signal = data$signal$FP1_F3$data, n_samples = n_samples),
+      F3_C3_var = compute_running_variance(signal = data$signal$F3_C3$data, n_samples = n_samples),
+      C3_P3_var = compute_running_variance(signal = data$signal$C3_P3$data, n_samples = n_samples),
+      P3_O1_var = compute_running_variance(signal = data$signal$P3_O1$data, n_samples = n_samples),
+      FP2_F4_var = compute_running_variance(signal = data$signal$FP2_F4$data, n_samples = n_samples),
+      F4_C4_var = compute_running_variance(signal = data$signal$F4_C4$data, n_samples = n_samples),
+      C4_P4_var = compute_running_variance(signal = data$signal$C4_P4$data, n_samples = n_samples),
+      P4_O2_var = compute_running_variance(signal = data$signal$P4_O2$data, n_samples = n_samples),
+      FP2_F8_var = compute_running_variance(signal = data$signal$FP2_F8$data, n_samples = n_samples),
+      F8_T8_var = compute_running_variance(signal = data$signal$F8_T8$data, n_samples = n_samples),
+      P8_O2_var = compute_running_variance(signal = data$signal$P8_O2$data, n_samples = n_samples),
+      FZ_CZ_var = compute_running_variance(signal = data$signal$FZ_CZ$data, n_samples = n_samples),
+      CZ_PZ_var = compute_running_variance(signal = data$signal$CZ_PZ$data, n_samples = n_samples),
+      P7_T7_var = compute_running_variance(signal = data$signal$P7_T7$data, n_samples = n_samples),
+      T7_FT9_var = compute_running_variance(signal = data$signal$T7_FT9$data, n_samples = n_samples),
+      FT9_FT10_var = compute_running_variance(signal = data$signal$FT9_FT10$data, n_samples = n_samples),
+      FT10_T8_var = compute_running_variance(signal = data$signal$FT10_T8$data, n_samples = n_samples),
+      T8_P8_var = compute_running_variance(signal = data$signal$T8_P8$data, n_samples = n_samples)
+    )
+  }
+  out <- merge.data.frame(rho_df, var_df)
+  out
+}
+```
+
+```{r, eval = FALSE} 
+EWS_test <- make_EWS(data = data, n_samples = 512)
+```
+
+
+We continue and turn our attention to reading each record of patient 24 and combining them into a single time series.
+```{r, eval = FALSE}
+data_files_24 <- list.files(path = "./EEG data/chb24")
+data_files_24 <- data_files_24[1:22]
+EWS_matrices <- list()
+rf_date <- read.edf("./EEG data/chb24/chb24_01.edf")$header.global$startdate
+rf_date <- as.Date(rf_date, format = "%d.%m.%y")
+rf_time <- read.edf("./EEG data/chb24/chb24_01.edf")$header.global$starttime
+starttime <- paste(rf_date, rf_time)
+starttime <- as.POSIXct(starttime, format = "%d.%m.%y %H.%M.%S")
+for (filename in data_files_24){
+  data <- read.edf(paste("./EEG data/chb24/", filename, sep = ""))
+  
+  #Timing
+  rf_date <- data$header.global$startdate
+  rf_time <- data$header.global$starttime
+  starttime <- paste(rf_date, rf_time)
+  starttime <- as.POSIXct(starttime, format = "%d.%m.%y %H.%M.%S")
+  starttime <- as.numeric(starttime)
+  
+  #Computation
+  EWS_matrix <- make_EWS(data, n_samples = 512)
+  EWS_matrix$t <- EWS_matrix$t + starttime
+  EWS_matrices[[filename]] <- EWS_matrix
+}
+
+saveRDS(EWS_matrices, file = "EWS_matrices_patient_24")
+```
+
+```{r}
+EWS_matrices <- readRDS(file = "EWS_matrices_patient_24")
+```
+
+```{r}
+EWS_24 <- bind_rows(EWS_matrices)
+#plot(EWS_24$t)
+#plot(diff(EWS_24$t))
+EWS_24$is_preictal <- 0
+```
+
+We now enter the start and end times of seizures manually.
+```{r}
+seizure_no <- 1:16
+start <- c(480, 2451, 231, 2883, 1088, 1411, 1745, 1229, 38, 1745, 3527, 3288, 1939, 3552, 2515, 2804)
+end <- c(505,2476, 260, 2908, 1120, 1438, 1764, 1253, 60, 1764, 3597, 3304, 1966, 3569, 3581, 2872)
+seizure_times <- data.frame(seizure_no, start, end)
+```
+We add the start and end times from the respective files to align with canonical time rather than time fromr record start.
+```{r}
+#File 1
+  data <- read.edf("./EEG data/chb24/chb24_01.edf")
+  
+  #Timing
+  rf_date <- data$header.global$startdate
+  rf_time <- data$header.global$starttime
+  starttime <- paste(rf_date, rf_time)
+  starttime <- as.POSIXct(starttime, format = "%d.%m.%y %H.%M.%S")
+  starttime <- as.numeric(starttime)
+seizure_times[1:2, 2:3] <- seizure_times[1:2, 2:3] + starttime
+```
+```{r}
+#File 3
+  data <- read.edf("./EEG data/chb24/chb24_03.edf")
+  
+  #Timing
+  rf_date <- data$header.global$startdate
+  rf_time <- data$header.global$starttime
+  starttime <- paste(rf_date, rf_time)
+  starttime <- as.POSIXct(starttime, format = "%d.%m.%y %H.%M.%S")
+  starttime <- as.numeric(starttime)
+seizure_times[3:4, 2:3] <- seizure_times[3:4, 2:3] + starttime
+```
+```{r}
+#File 4
+  data <- read.edf("./EEG data/chb24/chb24_03.edf")
+  
+  #Timing
+  rf_date <- data$header.global$startdate
+  rf_time <- data$header.global$starttime
+  starttime <- paste(rf_date, rf_time)
+  starttime <- as.POSIXct(starttime, format = "%d.%m.%y %H.%M.%S")
+  starttime <- as.numeric(starttime)
+seizure_times[5:7, 2:3] <- seizure_times[5:7, 2:3] + starttime
+```
+```{r}
+#File 6
+  data <- read.edf("./EEG data/chb24/chb24_06.edf")
+  
+  #Timing
+  rf_date <- data$header.global$startdate
+  rf_time <- data$header.global$starttime
+  starttime <- paste(rf_date, rf_time)
+  starttime <- as.POSIXct(starttime, format = "%d.%m.%y %H.%M.%S")
+  starttime <- as.numeric(starttime)
+seizure_times[8, 2:3] <- seizure_times[8, 2:3] + starttime
+```
+```{r}
+#File 7
+  data <- read.edf("./EEG data/chb24/chb24_07.edf")
+  
+  #Timing
+  rf_date <- data$header.global$startdate
+  rf_time <- data$header.global$starttime
+  starttime <- paste(rf_date, rf_time)
+  starttime <- as.POSIXct(starttime, format = "%d.%m.%y %H.%M.%S")
+  starttime <- as.numeric(starttime)
+seizure_times[9, 2:3] <- seizure_times[9, 2:3] + starttime
+```
+```{r}
+#File 9
+  data <- read.edf("./EEG data/chb24/chb24_09.edf")
+  
+  #Timing
+  rf_date <- data$header.global$startdate
+  rf_time <- data$header.global$starttime
+  starttime <- paste(rf_date, rf_time)
+  starttime <- as.POSIXct(starttime, format = "%d.%m.%y %H.%M.%S")
+  starttime <- as.numeric(starttime)
+seizure_times[10, 2:3] <- seizure_times[10, 2:3] + starttime
+```
+```{r}
+#File 11
+  data <- read.edf("./EEG data/chb24/chb24_11.edf")
+  
+  #Timing
+  rf_date <- data$header.global$startdate
+  rf_time <- data$header.global$starttime
+  starttime <- paste(rf_date, rf_time)
+  starttime <- as.POSIXct(starttime, format = "%d.%m.%y %H.%M.%S")
+  starttime <- as.numeric(starttime)
+seizure_times[11, 2:3] <- seizure_times[11, 2:3] + starttime
+```
+```{r}
+#File 13
+  data <- read.edf("./EEG data/chb24/chb24_13.edf")
+  
+  #Timing
+  rf_date <- data$header.global$startdate
+  rf_time <- data$header.global$starttime
+  starttime <- paste(rf_date, rf_time)
+  starttime <- as.POSIXct(starttime, format = "%d.%m.%y %H.%M.%S")
+  starttime <- as.numeric(starttime)
+seizure_times[12, 2:3] <- seizure_times[12, 2:3] + starttime
+```
+```{r}
+#File 14
+  data <- read.edf("./EEG data/chb24/chb24_14.edf")
+  
+  #Timing
+  rf_date <- data$header.global$startdate
+  rf_time <- data$header.global$starttime
+  starttime <- paste(rf_date, rf_time)
+  starttime <- as.POSIXct(starttime, format = "%d.%m.%y %H.%M.%S")
+  starttime <- as.numeric(starttime)
+seizure_times[13, 2:3] <- seizure_times[13, 2:3] + starttime
+```
+```{r}
+#File 15
+  data <- read.edf("./EEG data/chb24/chb24_15.edf")
+  
+  #Timing
+  rf_date <- data$header.global$startdate
+  rf_time <- data$header.global$starttime
+  starttime <- paste(rf_date, rf_time)
+  starttime <- as.POSIXct(starttime, format = "%d.%m.%y %H.%M.%S")
+  starttime <- as.numeric(starttime)
+seizure_times[14, 2:3] <- seizure_times[14, 2:3] + starttime
+```
+```{r}
+#File 17
+  data <- read.edf("./EEG data/chb24/chb24_17.edf")
+  
+  #Timing
+  rf_date <- data$header.global$startdate
+  rf_time <- data$header.global$starttime
+  starttime <- paste(rf_date, rf_time)
+  starttime <- as.POSIXct(starttime, format = "%d.%m.%y %H.%M.%S")
+  starttime <- as.numeric(starttime)
+seizure_times[15, 2:3] <- seizure_times[15, 2:3] + starttime
+```
+```{r}
+#File 21
+  data <- read.edf("./EEG data/chb24/chb24_21.edf")
+  
+  #Timing
+  rf_date <- data$header.global$startdate
+  rf_time <- data$header.global$starttime
+  starttime <- paste(rf_date, rf_time)
+  starttime <- as.POSIXct(starttime, format = "%d.%m.%y %H.%M.%S")
+  starttime <- as.numeric(starttime)
+seizure_times[16, 2:3] <- seizure_times[16, 2:3] + starttime
+```
+
+We remove the data from ictal periods,
+```{r}
+for (i in (1:16)){
+  EWS_24 <- EWS_24[(EWS_24$t <= seizure_times[i,2]) | (EWS_24$t > (seizure_times[i,3])+1), ]
+}
+```
+
+We label observations within the 120s preceding seizure onsets as preictal.
+```{r}
+for (i in (1:16)){
+  preictal <- (EWS_24$t <= seizure_times[i,2]) & (EWS_24$t > (seizure_times[i,2] - 120))
+  EWS_24$is_preictal[preictal] <- 1
+}
+```
+
 
