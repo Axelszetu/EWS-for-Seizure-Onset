@@ -7,6 +7,9 @@ library(ggplot2)
 library(reshape2)
 library(lubridate)
 library(dplyr)
+library(ROCR)
+library(pROC)
+#library(glmnet)
 ```
 
 
@@ -132,7 +135,7 @@ Let's make a plot: We'll need it anyways
 plot_data_var <- melt(EWS_test$var, id.vars = "t")
 ggplot(data = plot_data_var, mapping = aes(x = t, y = value, colour = variable)) + geom_line()
 ```
-```{r}
+```{r, eval = FALSE}
 plot_data_rho <- melt(EWS_test$rho, id.vars = "t")
 ggplot(data = plot_data_rho, mapping = aes(x = t, y = value, colour = variable)) + geom_line()
 ```
@@ -243,6 +246,7 @@ EWS_24 <- bind_rows(EWS_matrices)
 #plot(diff(EWS_24$t))
 EWS_24$is_preictal <- 0
 ```
+
 
 We now enter the start and end times of seizures manually.
 ```{r}
@@ -411,5 +415,117 @@ for (i in (1:16)){
   EWS_24$is_preictal[preictal] <- 1
 }
 ```
+We remove NaN's from the data
+```{r}
+NAs <- which(is.na(EWS_24), arr.ind = TRUE)
+no_NAs <- dim(NAs)[1]
+for(i in (1:no_NAs)){
+  EWS_24[NAs[i,1],NAs[i,2]] <- EWS_24[NAs[i,1]-1, NAs[i,2]-1]
+}
+```
 
+
+Finally, we have our preprocessed dataset that we will use to do prediction.
+We will do weighted logistic regression, and since we wish to test predictive performance, we save roughly third of the data as testing data. The data from record 13 and on will be labelled test data while record 1 through 12 will be labelled training data.
+```{r}
+#File 13
+  data <- read.edf("./EEG data/chb24/chb24_13.edf")
+  #Timing
+  rf_date <- data$header.global$startdate
+  rf_time <- data$header.global$starttime
+  starttime <- paste(rf_date, rf_time)
+  starttime <- as.POSIXct(starttime, format = "%d.%m.%y %H.%M.%S")
+  starttime <- as.numeric(starttime)
+
+training_data <- EWS_24[(EWS_24$t) < starttime,]
+test_data <- EWS_24[(EWS_24$t) >= starttime,]
+```
+
+Fitting a non-penalized model using GLM
+```{r}
+model <- glm(formula = is_preictal ~ . -t, family = binomial(link = "logit"), data = training_data)
+summary(model)
+```
+Assessing the fit
+```{r}
+fitted_values <- model$fitted.values
+fitted_values <- ifelse(fitted_values > 0.2,1,0)
+misClasificError_fit <- mean(fitted_values != training_data$is_preictal)
+misClasificError_fit
+plot(fitted_values)
+plot(training_data$is_preictal)
+```
+Assesing performance
+```{r}
+predicted_results <- predict(model, newdata = test_data, type = "response")
+predicted_results <- ifelse(predicted_results > 0.2,1,0)
+misClasificError <- mean(predicted_results != test_data$is_preictal)
+misClasificError
+sum(predicted_results)
+plot(predicted_results)
+plot(test_data$is_preictal)
+```
+Despite this result not being abysmal on its face, it comes largely from making most predictions negative.
+Lets compute sensitivity and specificity
+```{r}
+table <- table(Predictions = predicted_results, TrueLabels = test_data$is_preictal)
+table
+sensitivity <- table[2,2]/(table[2,2] + table[1,2])
+sensitivity
+specificity <- table[1,1]/(table[1,1] + table[2,1])
+specificity
+```
+
+
+Let's make a ROC-curve.
+```{r}
+predicted_results <- predict(model, newdata = test_data, type = "response")
+pr <- prediction(predicted_results, test_data$is_preictal)
+prf <- performance(pr, measure = "tpr", x.measure = "fpr")
+plot(prf)
+auc <- performance(pr, measure = "auc")
+auc <- auc@y.values[[1]]
+auc
+```
+Let's make a prettier one
+```{r}
+rocobj <- roc(test_data$is_preictal, predicted_results)
+auc <- round(auc(test_data$is_preictal, predicted_results), 4)
+ggroc(rocobj) + ggtitle(paste0('ROC Curve ', '(AUC = ', auc, ')'))
+    theme(aspect.ratio = 1)
+```
+
+
+
+We attempted to fit a model using penalization, but did not have good results.
+Perhaps data should be normalized first.
+```{r, eval = FALSE}
+x <- model.matrix(is_preictal~.-t, training_data)
+y <- training_data$is_preictal
+cv_ridge <- cv.glmnet(x, y, alpha = 0, family = "binomial")
+model <- glmnet(x, y, alpha = 0, family = "binomial", lambda = cv_ridge$lambda.min)
+coef(model)
+fitted_values <- predict(model, newx = x)
+x_test <- model.matrix(is_preictal~.-t, test_data)
+probabilities <- predict(model, newx = x_test)
+predicted_classes <- ifelse(probabilities > -5, 1, 0)
+sum(predicted_classes)
+```
+That does not work at all for me.
+
+
+Dorsa et al propose a postprocessing method to increase performance: group observations in batches of 10.
+Then, if all observations within a group are positive, issue a warning.
+This reduces warnings from spurious swings, and lets us ramp up the sensitivity of our method.
+We attempted to omplement this, but we cannot get a result.
+```{r, eval = FALSE}
+trigger_alarm <- numeric(length = (dim(training_data))[1] - 1)
+for (i in (1:(length(trigger_alarm)))){
+  data <- fitted_values[i:(i+1)]
+  if (mean(data, na.rm = TRUE) > 0.75){
+    trigger_alarm <- 1
+  }
+}
+sum(trigger_alarm, na.rm = T)
+```
 
